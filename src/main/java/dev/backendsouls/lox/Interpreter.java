@@ -1,10 +1,13 @@
 package dev.backendsouls.lox;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     private final Environment globals = new Environment();
+    private final Map<Expr, Integer> locals = new HashMap<>();
     private Environment environment = this.globals;
 
     public Interpreter() {
@@ -42,6 +45,10 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private void execute(Stmt statement) {
         statement.accept(this);
+    }
+
+    public void resolve(Expr expr, int depth) {
+        this.locals.put(expr, depth);
     }
 
     @Override
