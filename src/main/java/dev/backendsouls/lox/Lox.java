@@ -30,7 +30,7 @@ public class Lox {
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
 
-        for (; ; ) {
+        for (;;) {
             System.out.println("> ");
             String line = reader.readLine();
 
@@ -57,12 +57,20 @@ public class Lox {
     }
 
     private static void run(String source) {
-        Scanner scanner = new Scanner(source);
-        List<Token> tokens = scanner.scanTokens();
 
-        Parser parser = new Parser(tokens);
-        List<Stmt> statements = parser.parse();
+        var scanner = new Scanner(source);
+        var tokens = scanner.scanTokens();
 
+        var parser = new Parser(tokens);
+        var statements = parser.parse();
+
+        if (Lox.hadError) {
+            return;
+        }
+
+        var resolver = new Resolver(interpreter);
+        resolver.resolve(statements);
+        
         if (Lox.hadError) {
             return;
         }

@@ -6,8 +6,11 @@ import java.util.List;
 import java.util.Map;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+
     private final Environment globals = new Environment();
+
     private final Map<Expr, Integer> locals = new HashMap<>();
+
     private Environment environment = this.globals;
 
     public Interpreter() {
@@ -53,8 +56,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visitAssignExpr(Expr.Assign expr) {
+
         var value = this.evaluate(expr.value());
-        this.environment.assign(expr.name(), value);
+        // this.environment.assign(expr.name(), value);
+
+        var distance = this.locals.get(expr);
+        if (distance != null) {
+            this.environment.assignAt(distance, expr.name(), value);
+
+            return value;
+        }
+
+        this.globals.assign(expr.name(), value);
+
         return value;
     }
 
@@ -174,7 +188,19 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Object visitVariableExpr(Expr.Variable expr) {
-        return this.environment.get(expr.name());
+        // return this.environment.get(expr.name());
+        return this.lookUpVariable(expr.name(), expr);
+    }
+
+    private Object lookUpVariable(Token name, Expr expr) {
+
+        final Integer distance = this.locals.get(expr);
+
+        if (distance != null) {
+            return this.environment.getAt(distance, name.lexeme());
+        }
+
+        return this.globals.get(name);
     }
 
     private Object evaluate(Expr expr) {

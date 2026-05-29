@@ -5,60 +5,91 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
-public class Resolver implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
+public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private final Interpreter interpreter;
 
     private final Stack<Map<String, Boolean>> scopes = new Stack<>();
 
+    private FunctionType currentFunction = FunctionType.NONE;
+
     public Resolver(final Interpreter interpreter) {
         this.interpreter = interpreter;
     }
 
+    private enum FunctionType {
+        NONE,
+        FUNCTION
+    }
+
     @Override
-    public Object visitAssignExpr(Expr.Assign expr) {
+    public Void visitAssignExpr(Expr.Assign expr) {
+
         this.resolve(expr.value());
         this.resolveLocal(expr, expr.name());
+
         return null;
     }
 
     @Override
-    public Object visitBinaryExpr(Expr.Binary expr) {
+    public Void visitBinaryExpr(Expr.Binary expression) {
+
+        this.resolve(expression.left());
+        this.resolve(expression.right());
+
         return null;
     }
 
     @Override
-    public Object visitCallExpr(Expr.Call expr) {
+    public Void visitCallExpr(Expr.Call expression) {
+
+        this.resolve(expression.callee());
+
+        for (Expr argument : expression.arguments()) {
+            this.resolve(argument);
+        }
+
         return null;
     }
 
     @Override
-    public Object visitGroupingExpr(Expr.Grouping expr) {
+    public Void visitGroupingExpr(Expr.Grouping expression) {
+
+        this.resolve(expression.expression());
+
         return null;
     }
 
     @Override
-    public Object visitLiteralExpr(Expr.Literal expr) {
+    public Void visitLiteralExpr(Expr.Literal expression) {
         return null;
     }
 
     @Override
-    public Object visitLogicalExpr(Expr.Logical expr) {
+    public Void visitLogicalExpr(Expr.Logical expression) {
+
+        this.resolve(expression.left());
+        this.resolve(expression.right());
+
         return null;
     }
 
     @Override
-    public Object visitUnaryExpr(Expr.Unary expr) {
+    public Void visitUnaryExpr(Expr.Unary expression) {
+
+        this.resolve(expression.right());
+
         return null;
     }
 
     @Override
-    public Object visitVariableExpr(Expr.Variable expr) {
+    public Void visitVariableExpr(Expr.Variable expr) {
         if (!this.scopes.isEmpty() && this.scopes.peek().get(expr.name().lexeme()) == Boolean.FALSE) {
             Lox.error(expr.name(), "Can't read local variable in its own initializer.");
         }
 
         this.resolveLocal(expr, expr.name());
+
         return null;
     }
 
@@ -102,20 +133,29 @@ public class Resolver implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
-    public Void visitExpressionStmt(Stmt.Expression stmt) {
+    public Void visitExpressionStmt(Stmt.Expression statement) {
+
+        this.resolve(statement.expression());
+
         return null;
     }
 
     @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
+
         this.declare(stmt.name());
         this.define(stmt.name());
 
-        this.resolveFunction(stmt);
+        this.resolveFunction(stmt, FunctionType.FUNCTION);
+
         return null;
     }
 
-    private void resolveFunction(Stmt.Function function) {
+    private void resolveFunction(Stmt.Function function, FunctionType functionType) {
+
+        var enclosingFunction = currentFunction;
+        this.currentFunction = functionType;
+
         this.beginScope();
 
         for (var param : function.params()) {
@@ -126,20 +166,42 @@ public class Resolver implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         this.resolve(function.body());
 
         this.endScope();
+
+        this.currentFunction = enclosingFunction;
     }
 
     @Override
-    public Void visitIfStmt(Stmt.If stmt) {
+    public Void visitIfStmt(Stmt.If statement) {
+
+        this.resolve(statement.condition());
+        this.resolve(statement.thenBranch());
+
+        if (statement.elseBranch() != null) {
+            this.resolve(statement.elseBranch());
+        }
+
         return null;
     }
 
     @Override
-    public Void visitPrintStmt(Stmt.Print stmt) {
+    public Void visitPrintStmt(Stmt.Print statement) {
+
+        this.resolve(statement.expression());
+
         return null;
     }
 
     @Override
-    public Void visitReturnStmt(Stmt.Return stmt) {
+    public Void visitReturnStmt(Stmt.Return statement) {
+
+        if (this.currentFunction == FunctionType.NONE) {
+            Lox.error(statement.keyword(), "Can't return from top-level code.");
+        }
+
+        if (statement.value() != null) {
+            this.resolve(statement.value());
+        }
+
         return null;
     }
 
@@ -162,6 +224,10 @@ public class Resolver implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
 
         var scope = this.scopes.peek();
+        if (scope.containsKey(name.lexeme())) {
+            Lox.error(name, "Already a variable with this name in this scope.");
+        }
+
         scope.put(name.lexeme(), false);
     }
 
@@ -174,7 +240,11 @@ public class Resolver implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
-    public Void visitWhileStmt(Stmt.While stmt) {
+    public Void visitWhileStmt(Stmt.While statement) {
+
+        this.resolve(statement.condition());
+        this.resolve(statement.body());
+
         return null;
     }
 }
