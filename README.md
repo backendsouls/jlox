@@ -2,10 +2,10 @@
 
 ## A Tree-Walker Interpreter
 
-- Lox Reference
-    - Java 21 implementation of the book
-- Some differences
-    - Use of records with interfaces instead of abstract class with inheritance
+## Some differences
+
+- Java 25 implementation of the book
+- Use of records with interfaces instead of abstract class with inheritance
 
 ## Lexical Grammar
 
@@ -24,9 +24,12 @@ DIGIT       → "0" ... "9" ;
 ```
 program     → declaration* EOF ;
 
-declaration → funDecl
+declaration → classDecl
+            | funDecl
             | varDecl
             | statement ;
+
+clasDecl      "class" IDENTIFIER "{" function* "}"
 
 funDecl     → "fun" function ;
 
@@ -62,7 +65,7 @@ printStmt   → "print" expression ";" ;
 ```
 expression  → assignment ;
 
-assignment  → IDENTIFIER "=" assignment
+assignment  → (call ".")? IDENTIFIER "=" assignment
             | logic_or ;
 
 logic_or    → logic_and ( "or" logic_and )* ;
@@ -73,7 +76,7 @@ term        → factor ( ( "-" | "+" ) factor)* ;
 factor      → unary ( ( "/" | "*" ) unary)* ;
 
 unary       → ( "!" | "-") unary | call ;
-call        → primary ( "(" arguments? ")" )* ;
+call        → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
 primary     → "true" | "false" | "nil"
             | NUMBER | STRING
             | "(" expression ")"
