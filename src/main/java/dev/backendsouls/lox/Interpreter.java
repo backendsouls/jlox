@@ -5,6 +5,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import dev.backendsouls.lox.Expr.Get;
+import dev.backendsouls.lox.Expr.Set;
+
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private final Environment globals = new Environment();
@@ -145,6 +148,17 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Object visitGetExpr(Get expression) {
+
+        var object = this.evaluate(expression.object());
+        if (object instanceof LoxInstance loxInstance) {
+            return loxInstance.get(expression.name());
+        }
+
+        throw new RuntimeError(expression.name(), "Only instances have properties.");
+    }
+
+    @Override
     public Object visitGroupingExpr(Expr.Grouping expr) {
         return this.evaluate(expr.expression());
     }
@@ -169,6 +183,21 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         }
 
         return this.evaluate(expr.right());
+    }
+
+    @Override
+    public Object visitSetExpr(Set expression) {
+
+        var object = this.evaluate(expression.object());
+
+        if (!(object instanceof LoxInstance)) {
+            throw new RuntimeError(expression.name(), "Only instances have fields.");
+        }
+
+        var value = this.evaluate(expression.value());
+        ((LoxInstance) object).set(expression.name(), value);
+
+        return value;
     }
 
     @Override
@@ -283,6 +312,18 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
         } finally {
             this.environment = previousEnvironment;
         }
+    }
+
+    @Override
+    public Void visitClassStmt(Stmt.Class statement) {
+
+        this.environment.define(statement.name().lexeme(), null);
+
+        LoxClass loxClass = new LoxClass(statement.name().lexeme());
+
+        this.environment.assign(statement.name(), loxClass);
+
+        return null;
     }
 
     @Override

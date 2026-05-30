@@ -5,6 +5,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Stack;
 
+import dev.backendsouls.lox.Expr.Get;
+import dev.backendsouls.lox.Expr.Set;
+
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private final Interpreter interpreter;
@@ -53,6 +56,14 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitGetExpr(Get expression) {
+
+        this.resolve(expression.object());
+
+        return null;
+    }
+
+    @Override
     public Void visitGroupingExpr(Expr.Grouping expression) {
 
         this.resolve(expression.expression());
@@ -70,6 +81,15 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
         this.resolve(expression.left());
         this.resolve(expression.right());
+
+        return null;
+    }
+
+    @Override
+    public Void visitSetExpr(Set expression) {
+
+        this.resolve(expression.value());
+        this.resolve(expression.object());
 
         return null;
     }
@@ -107,6 +127,15 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         this.beginScope();
         this.resolve(stmt.statements());
         this.endScope();
+        return null;
+    }
+
+    @Override
+    public Void visitClassStmt(Stmt.Class statement) {
+
+        this.declare(statement.name());
+        this.define(statement.name());
+
         return null;
     }
 

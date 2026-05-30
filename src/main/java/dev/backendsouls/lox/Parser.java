@@ -23,6 +23,11 @@ public class Parser {
 
     private Stmt declaration() {
         try {
+
+            if (this.match(TokenType.CLASS)) {
+                return this.classDeclaration();
+            }
+
             if (this.match(TokenType.FUN)) {
                 return this.function("function");
             }
@@ -36,6 +41,20 @@ public class Parser {
             this.synchronize();
             return null;
         }
+    }
+
+    private Stmt classDeclaration() {
+        var name = this.consume(TokenType.IDENTIFIER, "Expect class name.");
+        this.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.");
+
+        var methods = new ArrayList<Stmt.Function>();
+        while (!this.check(TokenType.RIGHT_BRACE) && !this.isAtEnd()) {
+            methods.add(this.function("method"));
+        }
+
+        this.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
+
+        return new Stmt.Class(name, null, methods);
     }
 
     private Stmt.Function function(String kind) {
@@ -233,9 +252,11 @@ public class Parser {
             var equals = this.previous();
             var value = this.assignment();
 
-            if (expr instanceof Expr.Variable) {
-                var name = ((Expr.Variable) expr).name();
+            if (expr instanceof Expr.Variable variable) {
+                var name = variable.name();
                 return new Expr.Assign(name, value);
+            } else if (expr instanceof Expr.Get get) {
+                return new Expr.Set(get.object(), get.name(), value);
             }
 
             this.error(equals, "Invalid assignment target.");
@@ -331,6 +352,10 @@ public class Parser {
         while (true) {
             if (this.match(TokenType.LEFT_PAREN)) {
                 expr = this.finishCall(expr);
+            } else if (this.match(TokenType.DOT)) {
+                var name = this.consume(TokenType.IDENTIFIER, "Expect property name after '.'.");
+                expr = new Expr.Get(expr, name);
+
             } else {
                 break;
             }

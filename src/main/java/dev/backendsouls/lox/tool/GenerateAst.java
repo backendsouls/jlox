@@ -19,26 +19,28 @@ public class GenerateAst {
                 "Assign   : Token name, Expr value",
                 "Binary   : Expr left, Token operator, Expr right",
                 "Call     : Expr callee, Token paren, List<Expr> arguments",
+                "Get      : Expr object, Token name",
                 "Grouping : Expr expression",
                 "Literal  : Object value",
                 "Logical  : Expr left, Token operator, Expr right",
+                "Set      : Expr object, Token name, Expr value",
                 "Unary    : Token operator, Expr right",
-                "Variable : Token name"
-        ));
+                "Variable : Token name"));
 
         defineAst(outputDir, "Stmt", Arrays.asList(
                 "Block      : List<Stmt> statements",
+                "Class      : Token name, List<Stmt.Function> methods",
                 "Expression : Expr expression",
                 "Function   : Token name, List<Token> params, List<Stmt> body",
                 "If         : Expr condition, Stmt thenBranch, Stmt elseBranch",
                 "Print      : Expr expression",
                 "Return     : Token keyword, Expr value",
                 "Var        : Token name, Expr initializer",
-                "While      : Expr condition, Stmt body"
-        ));
+                "While      : Expr condition, Stmt body"));
     }
 
-    private static void defineAst(final String outputDir, final String baseName, List<String> types) throws IOException {
+    private static void defineAst(final String outputDir, final String baseName, List<String> types)
+            throws IOException {
         var path = outputDir + "/" + baseName + ".java";
         var writer = new PrintWriter(path, StandardCharsets.UTF_8);
 
@@ -65,8 +67,7 @@ public class GenerateAst {
 
     private static void defineType(
             final PrintWriter writer, final String baseName,
-            final String recordName, final String fieldList
-    ) {
+            final String recordName, final String fieldList) {
         var record = "    record " + recordName + "(" + fieldList + ")" + " implements " + baseName + " {";
 
         writer.println(record);
@@ -81,16 +82,14 @@ public class GenerateAst {
     }
 
     private static void defineVisitor(
-            final PrintWriter writer, final String baseName, List<String> types
-    ) {
+            final PrintWriter writer, final String baseName, List<String> types) {
         writer.println("    interface Visitor<R> {");
 
         for (var type : types) {
             var typeName = type.split(":")[0].trim();
             writer.println(
                     "        R visit" + typeName + baseName + "("
-                            + typeName + " " + baseName.toLowerCase() + ");"
-            );
+                            + typeName + " " + baseName.toLowerCase() + ");");
         }
 
         writer.println("    }");
