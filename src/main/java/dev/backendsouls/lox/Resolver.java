@@ -7,6 +7,7 @@ import java.util.Stack;
 
 import dev.backendsouls.lox.Expr.Get;
 import dev.backendsouls.lox.Expr.Set;
+import dev.backendsouls.lox.Expr.This;
 
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
@@ -16,13 +17,22 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private FunctionType currentFunction = FunctionType.NONE;
 
+    private ClassType currentClass = ClassType.CLASS;
+
     public Resolver(final Interpreter interpreter) {
         this.interpreter = interpreter;
     }
 
     private enum FunctionType {
         NONE,
-        FUNCTION
+        FUNCTION,
+        INITIALIZER,
+        METHOD
+    }
+
+    private enum ClassType {
+        NONE,
+        CLASS
     }
 
     @Override
@@ -95,6 +105,20 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitThisExpr(This expression) {
+
+        if (this.currentClass == ClassType.NONE) {
+            Lox.error(expression.keyword(), "Can't use 'this' outside of a class.");
+
+            return null;
+        }
+
+        this.resolveLocal(expression, expression.keyword());
+
+        return null;
+    }
+
+    @Override
     public Void visitUnaryExpr(Expr.Unary expression) {
 
         this.resolve(expression.right());
@@ -113,19 +137,19 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         return null;
     }
 
-    void resolveLocal(Expr expr, Token name) {
+    void resolveLocal(Expr expression, Token name) {
         for (int i = this.scopes.size() - 1; i >= 0; i--) {
             if (this.scopes.get(i).containsKey(name.lexeme())) {
-                this.interpreter.resolve(expr, this.scopes.size() - 1 - i);
+                this.interpreter.resolve(expression, this.scopes.size() - 1 - i);
                 return;
             }
         }
     }
 
     @Override
-    public Void visitBlockStmt(Stmt.Block stmt) {
+    public Void visitBlockStmt(Stmt.Block statement) {
         this.beginScope();
-        this.resolve(stmt.statements());
+        this.resolve(statement.statements());
         this.endScope();
         return null;
     }
@@ -133,8 +157,27 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     @Override
     public Void visitClassStmt(Stmt.Class statement) {
 
+        var enclosingClass = this.currentClass;
+        this.currentClass = ClassType.CLASS;
+
         this.declare(statement.name());
         this.define(statement.name());
+
+        this.beginScope();
+        this.scopes.peek().put("this", true);
+
+        for (Stmt.Function method : statement.methods()) {
+            var declaration = FunctionType.METHOD;
+
+            if (method.name().lexeme().equals("init")) {
+                declaration = FunctionType.INITIALIZER;
+            }
+
+            this.resolveFunction(method, declaration);
+        }
+
+        this.endScope();
+        this.currentClass = enclosingClass;
 
         return null;
     }
@@ -228,6 +271,11 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
 
         if (statement.value() != null) {
+
+            if (this.currentFunction == FunctionType.INITIALIZER) {
+                Lox.error(statement.keyword(), "Can't return a value from an constructor.");
+            }
+
             this.resolve(statement.value());
         }
 

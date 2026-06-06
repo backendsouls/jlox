@@ -7,6 +7,7 @@ import java.util.Map;
 
 import dev.backendsouls.lox.Expr.Get;
 import dev.backendsouls.lox.Expr.Set;
+import dev.backendsouls.lox.Expr.This;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
@@ -201,6 +202,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Object visitThisExpr(This expression) {
+        return this.lookUpVariable(expression.keyword(), expression);
+    }
+
+    @Override
     public Object visitUnaryExpr(Expr.Unary expr) {
         var right = this.evaluate(expr.right());
 
@@ -319,7 +325,14 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
         this.environment.define(statement.name().lexeme(), null);
 
-        LoxClass loxClass = new LoxClass(statement.name().lexeme());
+        var methods = new HashMap<String, LoxFunction>();
+        for (var method : statement.methods()) {
+            var isInitializer = method.name().lexeme().equals("init");
+            var function = new LoxFunction(method, environment, isInitializer);
+            methods.put(method.name().lexeme(), function);
+        }
+
+        LoxClass loxClass = new LoxClass(statement.name().lexeme(), methods);
 
         this.environment.assign(statement.name(), loxClass);
 
@@ -334,7 +347,7 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     @Override
     public Void visitFunctionStmt(Stmt.Function stmt) {
-        var function = new LoxFunction(stmt, this.environment);
+        var function = new LoxFunction(stmt, this.environment, false);
         this.environment.define(stmt.name().lexeme(), function);
         return null;
     }

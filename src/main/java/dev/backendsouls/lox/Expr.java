@@ -20,6 +20,8 @@ public interface Expr {
 
         R visitSetExpr(Set expr);
 
+        R visitThisExpr(This expr);
+
         R visitUnaryExpr(Unary expr);
 
         R visitVariableExpr(Variable expr);
@@ -78,6 +80,13 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitSetExpr(this);
+        }
+    }
+
+    record This(Token keyword) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitThisExpr(this);
         }
     }
 

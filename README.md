@@ -7,6 +7,27 @@
 - Java 25 implementation of the book
 - Use of records with interfaces instead of abstract class with inheritance
 
+## Running
+
+Build the project first:
+
+```bash
+mvn package
+```
+
+Run the interpreter (REPL or file):
+
+```bash
+java -jar target/jlox-1.0-SNAPSHOT.jar
+java -jar target/jlox-1.0-SNAPSHOT.jar path/to/script.lox
+```
+
+Run `GenerateAst` (or any other class) by using `-cp` instead of `-jar`:
+
+```bash
+java -cp target/jlox-1.0-SNAPSHOT.jar dev.backendsouls.lox.tool.GenerateAst src/main/java/dev/backendsouls/lox
+```
+
 ## Lexical Grammar
 
 ```

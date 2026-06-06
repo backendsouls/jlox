@@ -54,7 +54,7 @@ public class Parser {
 
         this.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.");
 
-        return new Stmt.Class(name, null, methods);
+        return new Stmt.Class(name, methods);
     }
 
     private Stmt.Function function(String kind) {
@@ -401,6 +401,10 @@ public class Parser {
 
         if (this.match(TokenType.NUMBER, TokenType.STRING)) {
             return new Expr.Literal(this.previous().literal());
+        }
+
+        if (this.match(TokenType.THIS)) {
+            return new Expr.This(this.previous());
         }
 
         if (this.match(TokenType.IDENTIFIER)) {
