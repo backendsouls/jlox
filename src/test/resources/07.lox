@@ -4,5 +4,9 @@ fun fib(n) {
 }
 
 for (var i = 0; i < 30; i = i + 1) {
+    print i;
+}
+
+for (var i = 0; i < 30; i = i + 1) {
     print fib(i);
 }

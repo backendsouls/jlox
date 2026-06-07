@@ -65,4 +65,8 @@ public class Environment {
 
         this.ancestor(distance).values.put(name.lexeme(), value);
     }
+
+    public Environment getEnclosing() {
+        return enclosing;
+    }
 }

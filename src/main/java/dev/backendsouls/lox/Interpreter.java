@@ -2,18 +2,24 @@ package dev.backendsouls.lox;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 
 import dev.backendsouls.lox.Expr.Get;
 import dev.backendsouls.lox.Expr.Set;
+import dev.backendsouls.lox.Expr.Super;
 import dev.backendsouls.lox.Expr.This;
 
 public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
 
     private final Environment globals = new Environment();
 
-    private final Map<Expr, Integer> locals = new HashMap<>();
+    // Records use value-based equals/hashCode, so distinct AST nodes with identical
+    // fields (e.g. two `Variable(Token("i", line 6))` on the same line) would
+    // collide as map keys. IdentityHashMap keys by reference, keeping each node's
+    // resolution separate
+    private final Map<Expr, Integer> locals = new IdentityHashMap<>();
 
     private Environment environment = this.globals;
 
@@ -202,6 +208,21 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Object visitSuperExpr(Super expression) {
+
+        var distance = this.locals.get(expression);
+        var superclass = (LoxClass) this.environment.getAt(distance, "super");
+        var object = (LoxInstance) this.environment.getAt(distance - 1, "this");
+        var method = (LoxFunction) superclass.findMethod(expression.method().lexeme());
+
+        if (method == null) {
+            throw new RuntimeError(expression.method(), "Undefined property '" + expression.method().lexeme() + "'.");
+        }
+
+        return method.bind(object);
+    }
+
+    @Override
     public Object visitThisExpr(This expression) {
         return this.lookUpVariable(expression.keyword(), expression);
     }
@@ -279,7 +300,10 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             return;
         }
 
-        throw new RuntimeError(operator, "Operands must be a numbers.");
+        System.out.println(left);
+        System.out.println(right);
+
+        throw new RuntimeError(operator, "Operands must be numbers.");
     }
 
     private String stringify(Object object) {
@@ -323,7 +347,20 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
     @Override
     public Void visitClassStmt(Stmt.Class statement) {
 
+        Object superclass = null;
+        if (statement.superclass() != null) {
+            superclass = this.evaluate(statement.superclass());
+            if (!(superclass instanceof LoxClass)) {
+                Lox.error(statement.superclass().name(), "Superclass must be a class.");
+            }
+        }
+
         this.environment.define(statement.name().lexeme(), null);
+
+        if (statement.superclass() != null) {
+            this.environment = new Environment(this.environment);
+            this.environment.define("super", superclass);
+        }
 
         var methods = new HashMap<String, LoxFunction>();
         for (var method : statement.methods()) {
@@ -332,7 +369,11 @@ public class Interpreter implements Expr.Visitor<Object>, Stmt.Visitor<Void> {
             methods.put(method.name().lexeme(), function);
         }
 
-        LoxClass loxClass = new LoxClass(statement.name().lexeme(), methods);
+        LoxClass loxClass = new LoxClass(statement.name().lexeme(), (LoxClass) superclass, methods);
+
+        if (superclass != null) {
+            this.environment = this.environment.getEnclosing();
+        }
 
         this.environment.assign(statement.name(), loxClass);
 

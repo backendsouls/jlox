@@ -5,25 +5,16 @@ import java.util.List;
 public interface Expr {
     interface Visitor<R> {
         R visitAssignExpr(Assign expr);
-
         R visitBinaryExpr(Binary expr);
-
         R visitCallExpr(Call expr);
-
         R visitGetExpr(Get expr);
-
         R visitGroupingExpr(Grouping expr);
-
         R visitLiteralExpr(Literal expr);
-
         R visitLogicalExpr(Logical expr);
-
         R visitSetExpr(Set expr);
-
+        R visitSuperExpr(Super expr);
         R visitThisExpr(This expr);
-
         R visitUnaryExpr(Unary expr);
-
         R visitVariableExpr(Variable expr);
     }
 
@@ -80,6 +71,13 @@ public interface Expr {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitSetExpr(this);
+        }
+    }
+
+    record Super(Token keyword, Token method) implements Expr {
+        @Override
+        public <R> R accept(Visitor<R> visitor) {
+            return visitor.visitSuperExpr(this);
         }
     }
 

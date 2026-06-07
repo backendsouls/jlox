@@ -7,6 +7,7 @@ import java.util.Stack;
 
 import dev.backendsouls.lox.Expr.Get;
 import dev.backendsouls.lox.Expr.Set;
+import dev.backendsouls.lox.Expr.Super;
 import dev.backendsouls.lox.Expr.This;
 
 public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
@@ -32,7 +33,8 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
 
     private enum ClassType {
         NONE,
-        CLASS
+        CLASS,
+        SUBCLASS
     }
 
     @Override
@@ -105,6 +107,22 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
     }
 
     @Override
+    public Void visitSuperExpr(Super expression) {
+
+        if (this.currentClass == ClassType.NONE) {
+            Lox.error(expression.keyword(), "Can't use 'super' outside of a class.");
+        }
+
+        if (this.currentClass != ClassType.SUBCLASS) {
+            Lox.error(expression.keyword(), "Can't use 'super' outside of a class.");
+        }
+
+        this.resolveLocal(expression, expression.keyword());
+
+        return null;
+    }
+
+    @Override
     public Void visitThisExpr(This expression) {
 
         if (this.currentClass == ClassType.NONE) {
@@ -163,6 +181,18 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         this.declare(statement.name());
         this.define(statement.name());
 
+        if (statement.superclass() != null) {
+            if (statement.name().lexeme().equals(statement.superclass().name().lexeme())) {
+                Lox.error(statement.superclass().name(), "A class can't inherit from itself.");
+            }
+
+            this.currentClass = ClassType.SUBCLASS;
+            this.resolve(statement.superclass());
+
+            this.beginScope();
+            this.scopes.peek().put("super", true);
+        }
+
         this.beginScope();
         this.scopes.peek().put("this", true);
 
@@ -177,6 +207,11 @@ public class Resolver implements Expr.Visitor<Void>, Stmt.Visitor<Void> {
         }
 
         this.endScope();
+
+        if (statement.superclass() != null) {
+            this.endScope();
+        }
+
         this.currentClass = enclosingClass;
 
         return null;

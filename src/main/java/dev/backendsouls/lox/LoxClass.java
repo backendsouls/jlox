@@ -3,7 +3,7 @@ package dev.backendsouls.lox;
 import java.util.List;
 import java.util.Map;
 
-public record LoxClass(String name, Map<String, LoxFunction> methods) implements LoxCallable {
+public record LoxClass(String name, LoxClass superclass, Map<String, LoxFunction> methods) implements LoxCallable {
 
     @Override
     public int arity() {
@@ -37,6 +37,10 @@ public record LoxClass(String name, Map<String, LoxFunction> methods) implements
     public Object findMethod(String name) {
         if (this.methods().containsKey(name)) {
             return this.methods().get(name);
+        }
+
+        if (this.superclass != null) {
+            return this.superclass.findMethod(name);
         }
 
         return null;

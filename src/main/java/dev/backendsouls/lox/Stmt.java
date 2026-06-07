@@ -5,21 +5,13 @@ import java.util.List;
 public interface Stmt {
     interface Visitor<R> {
         R visitBlockStmt(Block stmt);
-
         R visitClassStmt(Class stmt);
-
         R visitExpressionStmt(Expression stmt);
-
         R visitFunctionStmt(Function stmt);
-
         R visitIfStmt(If stmt);
-
         R visitPrintStmt(Print stmt);
-
         R visitReturnStmt(Return stmt);
-
         R visitVarStmt(Var stmt);
-
         R visitWhileStmt(While stmt);
     }
 
@@ -30,7 +22,7 @@ public interface Stmt {
         }
     }
 
-    record Class(Token name, List<Stmt.Function> methods) implements Stmt {
+    record Class(Token name, Expr.Variable superclass, List<Stmt.Function> methods) implements Stmt {
         @Override
         public <R> R accept(Visitor<R> visitor) {
             return visitor.visitClassStmt(this);
